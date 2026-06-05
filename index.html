@@ -188,8 +188,8 @@
     <div class="footer-link"><a href="https://capsulanet.blogspot.com" target="_blank">capsulanet.blogspot.com</a></div>
 </div>
 
-<!-- Cargar la librería Javatari real desde CDN (funciona bien en GitHub Pages) -->
-<script src="https://cdn.jsdelivr.net/npm/javatari@5.2.3/dist/javatari.min.js"></script>
+<!-- Cargar Javatari desde archivo local (subido por ti) -->
+<script src="javatari.min.js"></script>
 <script>
     // ========== CONFIGURACIÓN GITHUB ==========
     const GITHUB_USER = 'capsulanetpro';
@@ -269,8 +269,12 @@
         idleDiv.classList.remove('hidden');
     }
 
-    // Esperar a que Javatari esté disponible
+    // Esperar a que Javatari esté disponible (ahora local, casi inmediato)
     function waitForJavatari(callback, timeout = 5000) {
+        if (typeof Javatari !== 'undefined') {
+            callback();
+            return;
+        }
         const start = Date.now();
         const check = setInterval(() => {
             if (typeof Javatari !== 'undefined') {
