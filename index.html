@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Capsulanet Atari 2600 - Emulador</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+    /* ========== ESTILOS COMPLETOS DEL EMULADOR ========== */
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    body{
+        background:#181818; display:flex; flex-direction:column;
+        align-items:center; justify-content:center;
+        min-height:100vh; font-family:Arial,sans-serif;
+        padding:30px 12px 50px; gap:20px;
+    }
+    .atari-console{
+        background:#2d2d2d; border-radius:16px; padding:20px 15px 30px;
+        box-shadow:0 12px 24px rgba(0,0,0,.4); width:340px; position:relative;
+    }
+    .wood-panel{
+        background:linear-gradient(145deg, #8B5A2B, #5C3A21); border-radius:12px 12px 0 0;
+        padding:12px; margin:-20px -15px 15px -15px; text-align:center;
+        color:#e0c090; font-family:'Press Start 2P',monospace; font-size:8px; letter-spacing:2px;
+    }
+    .screen-bezel{
+        background:#111; border-radius:12px; padding:12px;
+        margin-bottom:20px; border:1px solid #555; position:relative;
+    }
+    #gameCanvas{
+        background:#000; width:100%; height:280px; display:block;
+        border-radius:8px; margin:0 auto; image-rendering:pixelated;
+    }
+    .idle{
+        position:absolute; inset:0; background:#1a1a1a; display:flex;
+        flex-direction:column; align-items:center; justify-content:center; gap:12px; z-index:2;
+    }
+    .idle.hidden{opacity:0; pointer-events:none;}
+    .idle-txt{
+        font-family:'Press Start 2P',monospace; font-size:9px; color:#aaa;
+        text-align:center; line-height:2;
+    }
+    .controls{
+        display:flex; flex-direction:column; gap:15px; margin-top:10px;
+    }
+    .joystick-area{
+        display:flex; justify-content:center; gap:30px; align-items:center;
+    }
+    .joystick{
+        position:relative; width:100px; height:100px; background:#3a3a3a;
+        border-radius:50%; box-shadow:inset -2px -2px 0 #1a1a1a, inset 2px 2px 0 #5a5a5a, 0 5px 10px black;
+    }
+    .joystick-stick{
+        position:absolute; width:45px; height:45px; background:#c33; border-radius:50%;
+        top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 2px 4px black;
+    }
+    .dir-btn{
+        position:absolute; background:transparent; border:none; cursor:pointer;
+        width:33px; height:33px; z-index:5;
+    }
+    #up{top:0; left:50%; transform:translateX(-50%);}
+    #down{bottom:0; left:50%; transform:translateX(-50%);}
+    #left{left:0; top:50%; transform:translateY(-50%);}
+    #right{right:0; top:50%; transform:translateY(-50%);}
+    .fire-buttons{ display:flex; gap:20px; }
+    .fire{
+        width:55px; height:55px; border-radius:50%; background:radial-gradient(circle at 30% 30%, #c33, #800);
+        border:none; box-shadow:0 4px 0 #400, 0 6px 10px black; cursor:pointer;
+        font-size:12px; font-weight:bold; color:#ffccaa;
+        transition:transform 0.05s, box-shadow 0.05s;
+    }
+    .fire:active,.fire.pr{ transform:translateY(3px); box-shadow:0 1px 0 #400, 0 4px 8px black; }
+    .select-reset{
+        display:flex; justify-content:center; gap:30px; margin-top:10px;
+    }
+    .sys-btn{
+        background:#444; border:none; border-radius:20px; padding:6px 12px;
+        color:#ddd; font-family:'Press Start 2P',monospace; font-size:7px;
+        cursor:pointer; box-shadow:inset 0 1px 1px #888, 0 2px 4px black; transition:all .05s;
+    }
+    .sys-btn:active{ transform:translateY(2px); }
+    .panel{ width:340px; display:flex; flex-direction:column; gap:10px; }
+    .pbox{ background:#222; border:1px solid #444; border-radius:12px; overflow:hidden; }
+    .phead{
+        padding:8px 12px; background:#1a1a1a; font-family:'Press Start 2P',monospace;
+        font-size:7px; color:#e0c090; display:flex; justify-content:space-between; align-items:center;
+    }
+    .reset-btn{
+        background:#333; border:1px solid #555; border-radius:4px;
+        color:#e0c090; font-family:'Press Start 2P',monospace; font-size:6px;
+        padding:3px 8px; cursor:pointer;
+    }
+    .search-box{ padding:8px; }
+    .search-box input{
+        width:100%; background:#2a2a2a; border:1px solid #444; border-radius:6px;
+        padding:6px; color:#ccc; font-family:monospace; font-size:9px; outline:none;
+    }
+    .rlist{ padding:5px; max-height:180px; overflow-y:auto; }
+    .ritem{
+        display:flex; align-items:center; gap:8px; padding:7px; margin:3px;
+        border-radius:6px; cursor:pointer; background:#2a2a2a;
+    }
+    .ritem.active{ background:#3a3a3a; border-left:3px solid #e0c090; }
+    .badge{ font-size:6px; padding:2px 4px; border-radius:3px; background:#444; color:#ccc; }
+    .rname{ font-size:10px; color:#e0c090; flex:1; }
+    .fav-star{ font-size:14px; cursor:pointer; color:#666; }
+    .fav-star.favorited{ color:#ffcc00; }
+    .play-count{ font-size:8px; background:#444; border-radius:10px; padding:0 6px; }
+    .sbar{
+        padding:6px; display:flex; align-items:center; gap:6px;
+        border-top:1px solid #444; font-size:8px; color:#aaa;
+    }
+    .sdot{ width:6px; height:6px; border-radius:50%; background:#555; }
+    .sdot.on{ background:#8bc34a; box-shadow:0 0 5px #8bc34a; }
+    .load-local-area{ padding:10px; display:flex; flex-direction:column; gap:8px; }
+    .btn-local{
+        background:#333; border:1px solid #555; border-radius:6px; padding:7px;
+        color:#e0c090; font-family:'Press Start 2P',monospace; font-size:7px; cursor:pointer;
+    }
+    .dropz{
+        border:1px dashed #555; border-radius:6px; padding:8px; text-align:center;
+        font-size:8px; color:#aaa; position:relative;
+    }
+    .dropz input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+    .ctrlg{ display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:8px; }
+    .crow{ display:flex; align-items:center; gap:6px; }
+    kbd{
+        background:#333; border:1px solid #555; border-radius:3px;
+        padding:1px 5px; font-size:9px; color:#e0c090;
+    }
+    .footer-link{ text-align:center; font-size:7px; margin-top:5px; }
+    .footer-link a{ color:#e0c090; text-decoration:none; }
+</style>
+</head>
+<body>
+
+<div class="atari-console">
+    <div class="wood-panel">⚡ ATARI 2600 ⚡</div>
+    <div class="screen-bezel">
+        <canvas id="gameCanvas" width="336" height="240"></canvas>
+        <div class="idle" id="idle">
+            <div class="idle-txt">CAPSULANET<br>ATARI 2600<br><span style="font-size:6px;">SELECCIONA UN JUEGO</span></div>
+        </div>
+    </div>
+    <div class="controls">
+        <div class="joystick-area">
+            <div class="joystick">
+                <div class="joystick-stick"></div>
+                <button class="dir-btn" id="up"></button>
+                <button class="dir-btn" id="down"></button>
+                <button class="dir-btn" id="left"></button>
+                <button class="dir-btn" id="right"></button>
+            </div>
+            <div class="fire-buttons">
+                <button class="fire" id="fire-btn">FIRE</button>
+            </div>
+        </div>
+        <div class="select-reset">
+            <button class="sys-btn" id="select-btn">SELECT</button>
+            <button class="sys-btn" id="reset-btn">RESET</button>
+        </div>
+    </div>
+</div>
+
+<div class="panel">
+    <div class="pbox">
+        <div class="phead">📁 MIS JUEGOS <button class="reset-btn" id="resetGameBtn">⟳ RESET</button></div>
+        <div class="search-box"><input type="text" id="searchInput" placeholder="🔍 Buscar..."></div>
+        <div class="rlist" id="romList"><div style="padding:20px; text-align:center;">Cargando juegos...</div></div>
+        <div class="sbar"><div class="sdot" id="sdot"></div><span id="sTxt">Cargando desde GitHub...</span></div>
+    </div>
+    <div class="pbox">
+        <div class="phead">💾 CARGAR ROM LOCAL</div>
+        <div class="load-local-area">
+            <button class="btn-local" id="localRomBtn">📂 SELECCIONAR ARCHIVO .A26 / .BIN</button>
+            <div class="dropz" id="dz">O arrastra aquí<input type="file" accept=".a26,.bin,.rom" id="fileInput"></div>
+        </div>
+    </div>
+    <div class="pbox">
+        <div class="phead">🎮 CONTROLES</div>
+        <div class="ctrlg">
+            <div class="crow"><kbd>←↑↓→</kbd><span class="clbl">Joystick</span></div>
+            <div class="crow"><kbd>Ctrl / Z</kbd><span class="clbl">FIRE</span></div>
+            <div class="crow"><kbd>Shift / X</kbd><span class="clbl">SELECT</span></div>
+            <div class="crow"><kbd>Enter</kbd><span class="clbl">RESET</span></div>
+        </div>
+    </div>
+    <div class="footer-link"><a href="https://capsulanet.blogspot.com" target="_blank">capsulanet.blogspot.com</a></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/javatari@5.2.3/dist/javatari.min.js"></script>
+<script>
+    // ========== CONFIGURACIÓN GITHUB (TU REPOSITORIO DE ROMS) ==========
+    const GITHUB_USER = 'capsulanetpro';
+    const GITHUB_REPO = 'atari';      // ← repositorio donde tienes las ROMs
+    const GITHUB_BRANCH = 'main';
+    const CDN_URL = `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}@${GITHUB_BRANCH}/`;
+
+    let allRoms = [], activeIdx = -1, currentEmulator = null, searchTerm = '';
+    let stats = JSON.parse(localStorage.getItem('atari_stats')) || {};
+    let favorites = JSON.parse(localStorage.getItem('atari_favorites')) || [];
+
+    const canvas = document.getElementById('gameCanvas');
+    const romListEl = document.getElementById('romList'), sTxt = document.getElementById('sTxt'), sdot = document.getElementById('sdot');
+    const idleDiv = document.getElementById('idle'), fileInput = document.getElementById('fileInput'), dropZone = document.getElementById('dz');
+    const localRomBtn = document.getElementById('localRomBtn'), resetGameBtn = document.getElementById('resetGameBtn'), searchInput = document.getElementById('searchInput');
+
+    function setStatus(msg, isOn) { sTxt.textContent = msg; sdot.className = 'sdot' + (isOn ? ' on' : ''); }
+    function escapeHtml(str) { return str.replace(/[&<>]/g, m => m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
+
+    function renderRomList() {
+        const filtered = allRoms.filter(rom => rom.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        romListEl.innerHTML = '';
+        if (filtered.length === 0) { romListEl.innerHTML = '<div style="padding:20px; text-align:center;">No hay juegos</div>'; return; }
+        filtered.forEach((rom) => {
+            const originalIndex = allRoms.indexOf(rom);
+            const item = document.createElement('div');
+            item.className = 'ritem' + (originalIndex === activeIdx ? ' active' : '');
+            const playCount = stats[rom.id] || 0, favClass = favorites.includes(rom.id) ? 'favorited' : '';
+            item.innerHTML = `<span class="badge">A2600</span><span class="rname">${escapeHtml(rom.name)}</span><span class="play-count">${playCount}</span><span class="fav-star ${favClass}">★</span>`;
+            const favStar = item.querySelector('.fav-star');
+            favStar.addEventListener('click', (e) => { e.stopPropagation();
+                if (favorites.includes(rom.id)) favorites = favorites.filter(id => id !== rom.id);
+                else favorites.push(rom.id);
+                localStorage.setItem('atari_favorites', JSON.stringify(favorites)); renderRomList();
+            });
+            item.addEventListener('click', () => launchRom(originalIndex));
+            romListEl.appendChild(item);
+        });
+    }
+
+    function cleanEmulator() {
+        if (currentEmulator) { currentEmulator.destroy(); currentEmulator = null; }
+        idleDiv.classList.remove('hidden');
+    }
+
+    async function fetchRomBlob(url) {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        return await resp.arrayBuffer();
+    }
+
+    async function launchRom(index) {
+        const rom = allRoms[index];
+        if (!rom) return;
+        activeIdx = index; renderRomList(); setStatus('Cargando ' + rom.name + '…', false);
+        cleanEmulator();
+        try {
+            let romData = rom.isLocal ? await (await fetch(rom.url)).arrayBuffer() : await fetchRomBlob(rom.url);
+            if (currentEmulator) currentEmulator.destroy();
+            currentEmulator = new Javatari(canvas);
+            currentEmulator.loadCartridge(romData);
+            idleDiv.classList.add('hidden');
+            setStatus('▶ ' + rom.name, true);
+            stats[rom.id] = (stats[rom.id] || 0) + 1;
+            localStorage.setItem('atari_stats', JSON.stringify(stats));
+            bindGamepadButtons();
+        } catch(err) {
+            console.error(err);
+            setStatus('Error al cargar ROM: ' + err.message, false);
+            idleDiv.classList.remove('hidden');
+        }
+    }
+
+    function bindGamepadButtons() {
+        const keys = { 'up': 38, 'down': 40, 'left': 37, 'right': 39, 'fire-btn': 17, 'select-btn': 16, 'reset-btn': 13 };
+        for (const [id, keyCode] of Object.entries(keys)) {
+            const btn = document.getElementById(id);
+            if (!btn) continue;
+            const newBtn = btn.cloneNode(true); btn.parentNode.replaceChild(newBtn, btn);
+            const sendEvent = (type) => {
+                const ev = new KeyboardEvent(type, { keyCode, bubbles: true, cancelable: true });
+                document.dispatchEvent(ev); canvas.dispatchEvent(ev);
+            };
+            newBtn.addEventListener('mousedown', (e) => { e.preventDefault(); newBtn.classList.add('pr'); sendEvent('keydown'); });
+            newBtn.addEventListener('mouseup', (e) => { e.preventDefault(); newBtn.classList.remove('pr'); sendEvent('keyup'); });
+            newBtn.addEventListener('touchstart', (e) => { e.preventDefault(); newBtn.classList.add('pr'); sendEvent('keydown'); }, { passive: false });
+            newBtn.addEventListener('touchend', (e) => { e.preventDefault(); newBtn.classList.remove('pr'); sendEvent('keyup'); });
+        }
+    }
+
+    async function addLocalRom(file) {
+        if (!file) return;
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['a26','bin','rom'].includes(ext)) { setStatus('Formato no soportado', false); setTimeout(() => setStatus('Carga una ROM local', false), 1500); return; }
+        const name = file.name.replace(/\.(a26|bin|rom)$/i, ''), url = URL.createObjectURL(file);
+        allRoms.push({ name, url, isLocal: true, id: 'local_' + Date.now() });
+        renderRomList(); launchRom(allRoms.length - 1);
+    }
+
+    async function fetchGamesFromGitHub() {
+        const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents`;
+        try {
+            setStatus('Cargando juegos...', false);
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error(`Error ${response.status}`);
+            const files = await response.json();
+            const roms = files.filter(f => f.name.toLowerCase().match(/\.(a26|bin|rom)$/)).map(file => ({
+                name: file.name.replace(/\.(a26|bin|rom)$/i, ''),
+                url: CDN_URL + encodeURIComponent(file.name), isLocal: false, id: file.name
+            }));
+            roms.sort((a,b) => a.name.localeCompare(b.name));
+            const localRoms = allRoms.filter(r => r.isLocal);
+            allRoms = [...roms, ...localRoms];
+            renderRomList(); setStatus(`${roms.length} juegos disponibles`, true);
+        } catch(error) {
+            console.error(error);
+            setStatus('Error al cargar lista: ' + error.message, false);
+        }
+    }
+
+    searchInput.addEventListener('input', (e) => { searchTerm = e.target.value; renderRomList(); });
+    resetGameBtn.addEventListener('click', () => { if (activeIdx >= 0) launchRom(activeIdx); });
+    localRomBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => { if(e.target.files.length) addLocalRom(e.target.files[0]); fileInput.value = ''; });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dg'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dg'));
+    dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dg'); if(e.dataTransfer.files[0]) addLocalRom(e.dataTransfer.files[0]); });
+
+    fetchGamesFromGitHub();
+</script>
+</body>
+</html>
