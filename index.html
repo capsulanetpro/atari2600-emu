@@ -190,21 +190,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/javatari@5.2.3/dist/javatari.min.js"></script>
 <script>
-    // ==================================================
-    //  LISTA DE JUEGOS (MODIFICA AQUÍ TUS ROMS)
-    // ==================================================
-    const ROMS = [
-        // Formato: { name: "Nombre visible", file: "nombre_del_archivo.bin" }
-        // Los archivos deben estar dentro de la carpeta "roms"
-        { name: "River Raid", file: "riverraid.bin" },
-        { name: "Pitfall!", file: "pitfall.bin" },
-        { name: "Space Invaders", file: "spaceinvaders.bin" }
-        // Añade más juegos siguiendo este mismo formato
-    ];
+    // ========== CONFIGURACIÓN GITHUB ==========
+    const GITHUB_USER = 'capsulanetpro';
+    const GITHUB_REPO = 'atari2600-emu';
+    const GITHUB_BRANCH = 'main';
+    const ROMS_FOLDER = 'roms';
+    const RAW_BASE_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${ROMS_FOLDER}/`;
+    const API_URL = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${ROMS_FOLDER}`;
 
-    // ==================================================
-    //  NO MODIFICAR NADA MÁS ABAJO (a menos que sepas)
-    // ==================================================
     let allRoms = [];
     let activeIdx = -1;
     let currentEmulator = null;
@@ -359,21 +352,29 @@
         launchRom(allRoms.length - 1);
     }
 
-    // Construir la lista a partir de ROMS (carpeta /roms)
-    function buildRomList() {
-        allRoms = ROMS.map((rom, idx) => ({
-            name: rom.name,
-            url: `roms/${rom.file}`,
-            isLocal: false,
-            id: rom.file,
-            type: 'A2600'
-        }));
+    // Obtener la lista de ROMs desde GitHub API
+    async function fetchRomList() {
+        try {
+            setStatus('Cargando lista de juegos...', false);
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const files = await response.json();
+            const romFiles = files.filter(file => file.name !== '.gitkeep' && (file.name.endsWith('.bin') || file.name.endsWith('.a26') || file.name.endsWith('.rom')));
+            const roms = romFiles.map(file => ({
+                name: file.name.replace(/\.(bin|a26|rom)$/i, ''),
+                url: RAW_BASE_URL + encodeURIComponent(file.name),
+                id: file.name,
+                isLocal: false
+            }));
+            allRoms = roms;
+            renderRomList();
+            setStatus(`${allRoms.length} juegos disponibles`, true);
+        } catch (error) {
+            console.error('Error fetching ROM list:', error);
+            setStatus('Error al cargar la lista de juegos. Verifica la conexión.', false);
+            romListEl.innerHTML = '<div style="padding:20px; text-align:center;">Error al conectar con GitHub. Asegúrate de que el repositorio sea público.</div>';
+        }
     }
-
-    // Inicializar
-    buildRomList();
-    renderRomList();
-    setStatus(`${allRoms.length} juegos disponibles`, true);
 
     // Eventos
     searchInput.addEventListener('input', (e) => {
@@ -398,6 +399,9 @@
         dropZone.classList.remove('dg');
         if (e.dataTransfer.files[0]) addLocalRom(e.dataTransfer.files[0]);
     });
+
+    // Inicializar
+    fetchRomList();
 </script>
 </body>
 </html>
