@@ -6,7 +6,7 @@
 <title>Capsulanet Atari 2600 - Emulador</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
-    /* ========== ESTILOS (mismos de antes) ========== */
+    /* ========== ESTILOS (iguales que antes) ========== */
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
     body{
         background:#181818; display:flex; flex-direction:column;
@@ -188,71 +188,8 @@
     <div class="footer-link"><a href="https://capsulanet.blogspot.com" target="_blank">capsulanet.blogspot.com</a></div>
 </div>
 
-<script>
-// ========== EMPOTRAR JAVATARI LOCALMENTE (PAULO PECCIN, V5.0.4) ==========
-window.Javatari = (function(){
-  // Función de utilidad para crear elementos
-  var doc = document;
-  function createEl(type, props) {
-    var el = doc.createElement(type);
-    if (props) for (var key in props) if (props.hasOwnProperty(key)) el[key] = props[key];
-    return el;
-  }
-  // Constructor principal de Javatari (simplificado)
-  function Javatari(canvas) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
-    this.romData = null;
-    this.interval = null;
-    this.isRunning = false;
-    // Frame rate de Atari 2600 es aproximadamente 60 fps
-    this.frameDelay = 1000 / 60;
-  }
-  Javatari.prototype.loadCartridge = function(buffer) {
-    this.romData = buffer;
-    this.initCanvas();
-    this.start();
-  };
-  Javatari.prototype.initCanvas = function() {
-    this.canvas.width = 336;
-    this.canvas.height = 240;
-    this.ctx.fillStyle = '#000';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-  };
-  Javatari.prototype.start = function() {
-    if (this.interval) clearInterval(this.interval);
-    this.isRunning = true;
-    var self = this;
-    this.interval = setInterval(function() {
-      if (self.isRunning) self.drawFrame();
-    }, this.frameDelay);
-  };
-  Javatari.prototype.drawFrame = function() {
-    // Simulación de dibujo de pantalla: mostrar un patrón básico
-    // para que el usuario sepa que el emulador está activo.
-    var w = this.canvas.width, h = this.canvas.height;
-    var imgData = this.ctx.getImageData(0, 0, w, h);
-    var data = imgData.data;
-    for (var i = 0; i < data.length; i += 4) {
-      data[i] = Math.random() * 255;     // R
-      data[i+1] = Math.random() * 255;   // G
-      data[i+2] = Math.random() * 255;   // B
-      data[i+3] = 255;                    // A
-    }
-    this.ctx.putImageData(imgData, 0, 0);
-  };
-  Javatari.prototype.destroy = function() {
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = null;
-    }
-    this.isRunning = false;
-    this.ctx.fillStyle = '#000';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-  };
-  return Javatari;
-})();
-</script>
+<!-- Cargar la librería Javatari real desde CDN (funciona bien en GitHub Pages) -->
+<script src="https://cdn.jsdelivr.net/npm/javatari@5.2.3/dist/javatari.min.js"></script>
 <script>
     // ========== CONFIGURACIÓN GITHUB ==========
     const GITHUB_USER = 'capsulanetpro';
@@ -332,6 +269,21 @@ window.Javatari = (function(){
         idleDiv.classList.remove('hidden');
     }
 
+    // Esperar a que Javatari esté disponible
+    function waitForJavatari(callback, timeout = 5000) {
+        const start = Date.now();
+        const check = setInterval(() => {
+            if (typeof Javatari !== 'undefined') {
+                clearInterval(check);
+                callback();
+            } else if (Date.now() - start > timeout) {
+                clearInterval(check);
+                setStatus('Error: El emulador no se cargó. Recarga la página.', false);
+                console.error('Javatari no se cargó a tiempo');
+            }
+        }, 200);
+    }
+
     async function launchRom(index) {
         const rom = allRoms[index];
         if (!rom) return;
@@ -340,30 +292,25 @@ window.Javatari = (function(){
         setStatus('Cargando ' + rom.name + '…', false);
         cleanEmulator();
 
-        // Verificar que Javatari esté definido
-        if (typeof Javatari === 'undefined') {
-            setStatus('Error crítico: Emulador no cargado', false);
-            idleDiv.classList.remove('hidden');
-            return;
-        }
-
-        try {
-            const response = await fetch(rom.url);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const romData = await response.arrayBuffer();
-            if (currentEmulator) currentEmulator.destroy();
-            currentEmulator = new Javatari(canvas);
-            currentEmulator.loadCartridge(romData);
-            idleDiv.classList.add('hidden');
-            setStatus('▶ ' + rom.name, true);
-            stats[rom.id] = (stats[rom.id] || 0) + 1;
-            localStorage.setItem('atari_stats', JSON.stringify(stats));
-            bindGamepadButtons();
-        } catch (err) {
-            console.error(err);
-            setStatus('Error al cargar ROM: ' + err.message, false);
-            idleDiv.classList.remove('hidden');
-        }
+        waitForJavatari(async () => {
+            try {
+                const response = await fetch(rom.url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const romData = await response.arrayBuffer();
+                if (currentEmulator) currentEmulator.destroy();
+                currentEmulator = new Javatari(canvas);
+                currentEmulator.loadCartridge(romData);
+                idleDiv.classList.add('hidden');
+                setStatus('▶ ' + rom.name, true);
+                stats[rom.id] = (stats[rom.id] || 0) + 1;
+                localStorage.setItem('atari_stats', JSON.stringify(stats));
+                bindGamepadButtons();
+            } catch (err) {
+                console.error(err);
+                setStatus('Error al cargar ROM: ' + err.message, false);
+                idleDiv.classList.remove('hidden');
+            }
+        });
     }
 
     function bindGamepadButtons() {
