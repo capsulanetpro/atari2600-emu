@@ -410,239 +410,272 @@
 </div>
 
 <script>
-  // Cargar Javatari desde archivo LOCAL (js/javatari.js)
-  let emulatorReady = false;
-  let pendingLaunch = null;
-  let allRoms = [];
-  let activeIdx = -1;
-  let currentEmulator = null;
-  let searchTerm = '';
-  let stats = JSON.parse(localStorage.getItem('atari_stats')) || {};
-  let favorites = JSON.parse(localStorage.getItem('atari_favorites')) || [];
+  (function(){
+    let emulatorReady = false;
+    let pendingLaunch = null;
+    let allRoms = [];
+    let activeIdx = -1;
+    let currentEmulator = null;
+    let searchTerm = '';
+    let stats = JSON.parse(localStorage.getItem('atari_stats')) || {};
+    let favorites = JSON.parse(localStorage.getItem('atari_favorites')) || [];
 
-  const canvas = document.getElementById('gameCanvas');
-  const romListEl = document.getElementById('romList');
-  const sTxt = document.getElementById('sTxt');
-  const sdot = document.getElementById('sdot');
-  const idleDiv = document.getElementById('idle');
-  const fileInput = document.getElementById('fileInput');
-  const dropZone = document.getElementById('dz');
-  const localRomBtn = document.getElementById('localRomBtn');
-  const resetGameBtn = document.getElementById('resetGameBtn');
-  const searchInput = document.getElementById('searchInput');
+    const canvas = document.getElementById('gameCanvas');
+    const romListEl = document.getElementById('romList');
+    const sTxt = document.getElementById('sTxt');
+    const sdot = document.getElementById('sdot');
+    const idleDiv = document.getElementById('idle');
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dz');
+    const localRomBtn = document.getElementById('localRomBtn');
+    const resetGameBtn = document.getElementById('resetGameBtn');
+    const searchInput = document.getElementById('searchInput');
 
-  function setStatus(msg, isOn){
-    sTxt.textContent = msg;
-    sdot.className = 'sdot' + (isOn ? ' on' : '');
-  }
-
-  function escapeHtml(str){
-    return str.replace(/[&<>]/g, m => m==='&'?'&amp;':m==='<'?'&lt;':'&gt;');
-  }
-
-  function renderRomList(){
-    const filtered = allRoms.filter(rom => rom.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    romListEl.innerHTML = '';
-    if(filtered.length === 0){
-      romListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#2a6e2a;">No hay juegos</div>';
-      return;
+    function setStatus(msg, isOn){
+      sTxt.textContent = msg;
+      sdot.className = 'sdot' + (isOn ? ' on' : '');
     }
-    filtered.forEach((rom)=>{
-      const originalIndex = allRoms.indexOf(rom);
-      const item = document.createElement('div');
-      item.className = 'ritem' + (originalIndex === activeIdx ? ' active' : '');
-      const playCount = stats[rom.id] || 0;
-      const favClass = favorites.includes(rom.id) ? 'favorited' : '';
-      item.innerHTML = `
-        <span class="badge">A2600</span>
-        <span class="rname">${escapeHtml(rom.name)}</span>
-        <span class="play-count">${playCount}</span>
-        <span class="fav-star ${favClass}">★</span>
-      `;
-      const favStar = item.querySelector('.fav-star');
-      favStar.addEventListener('click',(e)=>{
-        e.stopPropagation();
-        if(favorites.includes(rom.id)) favorites = favorites.filter(id=>id!==rom.id);
-        else favorites.push(rom.id);
-        localStorage.setItem('atari_favorites',JSON.stringify(favorites));
-        renderRomList();
+
+    function escapeHtml(str){
+      return str.replace(/[&<>]/g, m => m==='&'?'&amp;':m==='<'?'&lt;':'&gt;');
+    }
+
+    function renderRomList(){
+      const filtered = allRoms.filter(rom => rom.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      romListEl.innerHTML = '';
+      if(filtered.length === 0){
+        romListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#2a6e2a;">No hay juegos</div>';
+        return;
+      }
+      filtered.forEach((rom)=>{
+        const originalIndex = allRoms.indexOf(rom);
+        const item = document.createElement('div');
+        item.className = 'ritem' + (originalIndex === activeIdx ? ' active' : '');
+        const playCount = stats[rom.id] || 0;
+        const favClass = favorites.includes(rom.id) ? 'favorited' : '';
+        item.innerHTML = `
+          <span class="badge">A2600</span>
+          <span class="rname">${escapeHtml(rom.name)}</span>
+          <span class="play-count">${playCount}</span>
+          <span class="fav-star ${favClass}">★</span>
+        `;
+        const favStar = item.querySelector('.fav-star');
+        favStar.addEventListener('click',(e)=>{
+          e.stopPropagation();
+          if(favorites.includes(rom.id)) favorites = favorites.filter(id=>id!==rom.id);
+          else favorites.push(rom.id);
+          localStorage.setItem('atari_favorites',JSON.stringify(favorites));
+          renderRomList();
+        });
+        item.addEventListener('click',()=>{
+          if(!emulatorReady){
+            setStatus('Emulador aún no listo. Espera...',false);
+            pendingLaunch = originalIndex;
+            return;
+          }
+          launchRom(originalIndex);
+        });
+        romListEl.appendChild(item);
       });
-      item.addEventListener('click',()=>{
-        if(!emulatorReady){
-          setStatus('Emulador aún no listo. Espera...',false);
-          pendingLaunch = originalIndex;
-          return;
-        }
-        launchRom(originalIndex);
-      });
-      romListEl.appendChild(item);
-    });
-  }
-
-  function cleanEmulator(){
-    if(currentEmulator){
-      currentEmulator.destroy();
-      currentEmulator = null;
     }
-    idleDiv.classList.remove('hidden');
-  }
 
-  async function launchRom(index){
-    if(!emulatorReady){
-      setStatus('El emulador no está disponible. Recarga la página.',false);
-      return;
-    }
-    const rom = allRoms[index];
-    if(!rom) return;
-    activeIdx = index;
-    renderRomList();
-    setStatus('Cargando '+rom.name+'…',false);
-    cleanEmulator();
-    try{
-      const response = await fetch(rom.url);
-      if(!response.ok) throw new Error(`HTTP ${response.status}`);
-      const romData = await response.arrayBuffer();
-      currentEmulator = new Javatari(canvas);
-      currentEmulator.loadCartridge(romData);
-      idleDiv.classList.add('hidden');
-      setStatus('▶ '+rom.name,true);
-      stats[rom.id] = (stats[rom.id]||0)+1;
-      localStorage.setItem('atari_stats',JSON.stringify(stats));
-      bindGamepadButtons();
-    }catch(err){
-      console.error(err);
-      setStatus('Error al cargar ROM: '+err.message,false);
+    function cleanEmulator(){
+      if(currentEmulator){
+        currentEmulator.destroy();
+        currentEmulator = null;
+      }
       idleDiv.classList.remove('hidden');
     }
-  }
 
-  function bindGamepadButtons(){
-    const keys = { 'up':38, 'down':40, 'left':37, 'right':39, 'fire-btn':17, 'select-btn':16, 'reset-btn':13 };
-    for(const [id, keyCode] of Object.entries(keys)){
-      const btn = document.getElementById(id);
-      if(!btn) continue;
-      const newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-      const sendEvent = (type)=>{
-        const ev = new KeyboardEvent(type, { keyCode, bubbles:true, cancelable:true });
-        document.dispatchEvent(ev);
-        canvas.dispatchEvent(ev);
-      };
-      newBtn.addEventListener('mousedown',(e)=>{
-        e.preventDefault();
-        newBtn.classList.add('pr');
-        sendEvent('keydown');
-      });
-      newBtn.addEventListener('mouseup',(e)=>{
-        e.preventDefault();
-        newBtn.classList.remove('pr');
-        sendEvent('keyup');
-      });
-      newBtn.addEventListener('touchstart',(e)=>{
-        e.preventDefault();
-        newBtn.classList.add('pr');
-        sendEvent('keydown');
-      },{ passive:false });
-      newBtn.addEventListener('touchend',(e)=>{
-        e.preventDefault();
-        newBtn.classList.remove('pr');
-        sendEvent('keyup');
-      });
-    }
-  }
-
-  async function addLocalRom(file){
-    if(!file) return;
-    const ext = file.name.split('.').pop().toLowerCase();
-    if(!['a26','bin','rom'].includes(ext)){
-      setStatus('Formato no soportado',false);
-      setTimeout(()=>setStatus('Carga una ROM válida',false),1500);
-      return;
-    }
-    const name = file.name.replace(/\.(a26|bin|rom)$/i,'');
-    const url = URL.createObjectURL(file);
-    const newRom = { name, url, id:'local_'+Date.now()+'_'+name, isLocal:true };
-    allRoms.push(newRom);
-    renderRomList();
-    launchRom(allRoms.length-1);
-  }
-
-  async function fetchGamesFromGitHub(){
-    const GITHUB_USER = 'capsulanetpro';
-    const GITHUB_REPO = 'atari2600-emu';
-    const GITHUB_BRANCH = 'main';
-    const ROMS_PATH = 'roms';
-    const RAW_BASE = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${ROMS_PATH}/`;
-    const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${ROMS_PATH}`;
-    try{
-      setStatus('Cargando lista de juegos desde GitHub...',false);
-      const response = await fetch(apiUrl);
-      if(!response.ok) throw new Error(`Error ${response.status}`);
-      const files = await response.json();
-      const romsFromGitHub = files
-        .filter(f => f.name.toLowerCase().endsWith('.bin') || f.name.toLowerCase().endsWith('.a26') || f.name.toLowerCase().endsWith('.rom'))
-        .map(file => ({
-          name: file.name.replace(/\.(bin|a26|rom)$/i,''),
-          url: RAW_BASE + encodeURIComponent(file.name),
-          id: file.name,
-          isLocal: false
-        }));
-      romsFromGitHub.sort((a,b)=>a.name.localeCompare(b.name));
-      const localRoms = allRoms.filter(r=>r.isLocal);
-      allRoms = [...romsFromGitHub, ...localRoms];
+    async function launchRom(index){
+      if(!emulatorReady){
+        setStatus('El emulador no está disponible. Recarga la página.',false);
+        return;
+      }
+      const rom = allRoms[index];
+      if(!rom) return;
+      activeIdx = index;
       renderRomList();
-      setStatus(`Lista cargada: ${romsFromGitHub.length} juegos`, true);
-    }catch(error){
-      console.error(error);
-      setStatus('Error al cargar lista de juegos.', false);
-      romListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#2a6e2a;">Error al conectar con GitHub.<br>Verifica tu conexión.</div>';
+      setStatus('Cargando '+rom.name+'…',false);
+      cleanEmulator();
+      try{
+        const response = await fetch(rom.url);
+        if(!response.ok) throw new Error(`HTTP ${response.status}`);
+        const romData = await response.arrayBuffer();
+        // Verificar que Javatari es un constructor
+        if(typeof Javatari !== 'function'){
+          throw new Error('Javatari no es un constructor. Archivo incorrecto.');
+        }
+        currentEmulator = new Javatari(canvas);
+        currentEmulator.loadCartridge(romData);
+        idleDiv.classList.add('hidden');
+        setStatus('▶ '+rom.name,true);
+        stats[rom.id] = (stats[rom.id]||0)+1;
+        localStorage.setItem('atari_stats',JSON.stringify(stats));
+        bindGamepadButtons();
+      }catch(err){
+        console.error(err);
+        setStatus('Error al cargar ROM: '+err.message,false);
+        idleDiv.classList.remove('hidden');
+      }
     }
-  }
 
-  // Cargar Javatari desde archivo LOCAL en la carpeta /js/
-  function loadLocalJavatari(){
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'js/javatari.js';
-      script.onload = () => {
-        if(typeof Javatari !== 'undefined') resolve();
-        else reject(new Error('Javatari no se cargó correctamente'));
+    function bindGamepadButtons(){
+      const keys = { 'up':38, 'down':40, 'left':37, 'right':39, 'fire-btn':17, 'select-btn':16, 'reset-btn':13 };
+      for(const [id, keyCode] of Object.entries(keys)){
+        const btn = document.getElementById(id);
+        if(!btn) continue;
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        const sendEvent = (type)=>{
+          const ev = new KeyboardEvent(type, { keyCode, bubbles:true, cancelable:true });
+          document.dispatchEvent(ev);
+          canvas.dispatchEvent(ev);
+        };
+        newBtn.addEventListener('mousedown',(e)=>{
+          e.preventDefault();
+          newBtn.classList.add('pr');
+          sendEvent('keydown');
+        });
+        newBtn.addEventListener('mouseup',(e)=>{
+          e.preventDefault();
+          newBtn.classList.remove('pr');
+          sendEvent('keyup');
+        });
+        newBtn.addEventListener('touchstart',(e)=>{
+          e.preventDefault();
+          newBtn.classList.add('pr');
+          sendEvent('keydown');
+        },{ passive:false });
+        newBtn.addEventListener('touchend',(e)=>{
+          e.preventDefault();
+          newBtn.classList.remove('pr');
+          sendEvent('keyup');
+        });
+      }
+    }
+
+    async function addLocalRom(file){
+      if(!file) return;
+      const ext = file.name.split('.').pop().toLowerCase();
+      if(!['a26','bin','rom'].includes(ext)){
+        setStatus('Formato no soportado',false);
+        setTimeout(()=>setStatus('Carga una ROM válida',false),1500);
+        return;
+      }
+      const name = file.name.replace(/\.(a26|bin|rom)$/i,'');
+      const url = URL.createObjectURL(file);
+      const newRom = { name, url, id:'local_'+Date.now()+'_'+name, isLocal:true };
+      allRoms.push(newRom);
+      renderRomList();
+      launchRom(allRoms.length-1);
+    }
+
+    async function fetchGamesFromGitHub(){
+      const GITHUB_USER = 'capsulanetpro';
+      const GITHUB_REPO = 'atari2600-emu';
+      const GITHUB_BRANCH = 'main';
+      const ROMS_PATH = 'roms';
+      const RAW_BASE = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${ROMS_PATH}/`;
+      const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${ROMS_PATH}`;
+      try{
+        setStatus('Cargando lista de juegos desde GitHub...',false);
+        const response = await fetch(apiUrl);
+        if(!response.ok) throw new Error(`Error ${response.status}`);
+        const files = await response.json();
+        const romsFromGitHub = files
+          .filter(f => f.name.toLowerCase().endsWith('.bin') || f.name.toLowerCase().endsWith('.a26') || f.name.toLowerCase().endsWith('.rom'))
+          .map(file => ({
+            name: file.name.replace(/\.(bin|a26|rom)$/i,''),
+            url: RAW_BASE + encodeURIComponent(file.name),
+            id: file.name,
+            isLocal: false
+          }));
+        romsFromGitHub.sort((a,b)=>a.name.localeCompare(b.name));
+        const localRoms = allRoms.filter(r=>r.isLocal);
+        allRoms = [...romsFromGitHub, ...localRoms];
+        renderRomList();
+        setStatus(`Lista cargada: ${romsFromGitHub.length} juegos`, true);
+      }catch(error){
+        console.error(error);
+        setStatus('Error al cargar lista de juegos.', false);
+        romListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#2a6e2a;">Error al conectar con GitHub.<br>Verifica tu conexión.</div>';
+      }
+    }
+
+    // Función para cargar Javatari desde el archivo local o fallback a CDN
+    function loadJavatariWithFallback(){
+      return new Promise((resolve, reject) => {
+        // Primero intentamos cargar el archivo local
+        const localScript = document.createElement('script');
+        localScript.src = 'js/javatari.js';
+        localScript.onload = () => {
+          // Esperamos un poco para que la variable global se defina
+          setTimeout(() => {
+            if(typeof Javatari !== 'undefined' && typeof Javatari === 'function'){
+              resolve();
+            } else {
+              // Si no es función, probamos con CDN
+              loadFromCDN(resolve, reject);
+            }
+          }, 100);
+        };
+        localScript.onerror = () => {
+          console.warn('No se pudo cargar el archivo local. Intentando CDN...');
+          loadFromCDN(resolve, reject);
+        };
+        document.head.appendChild(localScript);
+      });
+    }
+
+    function loadFromCDN(resolve, reject){
+      const cdnScript = document.createElement('script');
+      cdnScript.src = 'https://cdn.jsdelivr.net/npm/javatari@5.2.3/dist/javatari.min.js';
+      cdnScript.onload = () => {
+        setTimeout(() => {
+          if(typeof Javatari !== 'undefined' && typeof Javatari === 'function'){
+            resolve();
+          } else {
+            reject(new Error('Javatari no se cargó correctamente desde ningún origen.'));
+          }
+        }, 100);
       };
-      script.onerror = () => reject(new Error('Error al cargar el archivo js/javatari.js'));
-      document.head.appendChild(script);
-    });
-  }
+      cdnScript.onerror = () => reject(new Error('Error al cargar Javatari desde CDN.'));
+      document.head.appendChild(cdnScript);
+    }
 
-  async function init(){
-    setStatus('Cargando emulador...', false);
-    try{
-      await loadLocalJavatari();
-      emulatorReady = true;
-      setStatus('Emulador listo.', true);
-    }catch(err){
-      console.error(err);
-      setStatus('ERROR: No se pudo cargar el emulador. Asegúrate de que el archivo /js/javatari.js existe.', false);
-      romListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#ff4444;">No se pudo cargar el emulador.<br>Asegúrate de que el archivo <b>/js/javatari.js</b> esté subido a tu repositorio.</div>';
+    async function init(){
+      setStatus('Cargando emulador...', false);
+      try{
+        await loadJavatariWithFallback();
+        emulatorReady = true;
+        setStatus('Emulador listo.', true);
+      }catch(err){
+        console.error(err);
+        setStatus('ERROR: No se pudo cargar el emulador. Intenta recargar.', false);
+        romListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#ff4444;">No se pudo cargar el emulador.<br>Verifica tu conexión o recarga la página.</div>';
+        // Cargar lista de juegos aunque falle el emulador
+        await fetchGamesFromGitHub();
+        return;
+      }
       await fetchGamesFromGitHub();
-      return;
+      if(pendingLaunch !== null){
+        launchRom(pendingLaunch);
+        pendingLaunch = null;
+      }
     }
-    await fetchGamesFromGitHub();
-    if(pendingLaunch !== null){
-      launchRom(pendingLaunch);
-      pendingLaunch = null;
-    }
-  }
 
-  // Eventos
-  searchInput.addEventListener('input', (e)=>{ searchTerm = e.target.value; renderRomList(); });
-  resetGameBtn.addEventListener('click', ()=>{ if(activeIdx>=0 && emulatorReady) launchRom(activeIdx); });
-  localRomBtn.addEventListener('click', ()=>fileInput.click());
-  fileInput.addEventListener('change', (e)=>{ if(e.target.files.length) addLocalRom(e.target.files[0]); fileInput.value=''; });
-  dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('dg'); });
-  dropZone.addEventListener('dragleave', ()=>dropZone.classList.remove('dg'));
-  dropZone.addEventListener('drop', (e)=>{ e.preventDefault(); dropZone.classList.remove('dg'); if(e.dataTransfer.files[0]) addLocalRom(e.dataTransfer.files[0]); });
+    // Eventos
+    searchInput.addEventListener('input', (e)=>{ searchTerm = e.target.value; renderRomList(); });
+    resetGameBtn.addEventListener('click', ()=>{ if(activeIdx>=0 && emulatorReady) launchRom(activeIdx); });
+    localRomBtn.addEventListener('click', ()=>fileInput.click());
+    fileInput.addEventListener('change', (e)=>{ if(e.target.files.length) addLocalRom(e.target.files[0]); fileInput.value=''; });
+    dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('dg'); });
+    dropZone.addEventListener('dragleave', ()=>dropZone.classList.remove('dg'));
+    dropZone.addEventListener('drop', (e)=>{ e.preventDefault(); dropZone.classList.remove('dg'); if(e.dataTransfer.files[0]) addLocalRom(e.dataTransfer.files[0]); });
 
-  init();
+    init();
+  })();
 </script>
 </body>
 </html>
