@@ -8,346 +8,69 @@
 <style>
   /* ========== ESTILOS CYBERPUNK ========== */
   *{margin:0;padding:0;box-sizing:border-box}
-  body{
-    background:#000;
-    background-image:radial-gradient(ellipse at 30% 20%, #001a00 0%, #000000 100%);
-    min-height:100vh;
-    padding:1.5rem;
-    font-family:'Courier New', monospace;
-    display:flex;
-    justify-content:center;
-    align-items:center
-  }
-  .cyber-window{
-    max-width:1200px;
-    width:100%;
-    background:#0a0f0a;
-    border:3px solid #00ff41;
-    border-radius:28px;
-    box-shadow:0 0 20px rgba(0,255,65,.3);
-    overflow:hidden;
-    padding:1.5rem
-  }
-  .cyber-grid{
-    display:flex;
-    flex-wrap:wrap;
-    gap:2rem;
-    justify-content:center;
-    align-items:flex-start
-  }
-  .atari-console{
-    flex:1.2;
-    min-width:320px;
-    background:#0a0f0a;
-    border:2px solid #00ff41;
-    border-radius:24px;
-    padding:1.2rem;
-    box-shadow:0 0 15px rgba(0,255,65,.2)
-  }
-  .wood-panel{
-    background:#0a1a0a;
-    border-bottom:2px solid #00ff41;
-    border-radius:16px 16px 0 0;
-    padding:8px 12px;
-    margin:-1.2rem -1.2rem 1rem -1.2rem;
-    text-align:center;
-    font-family:monospace;
-    font-size:.8rem;
-    font-weight:bold;
-    letter-spacing:3px;
-    color:#00ff41;
-    text-shadow:0 0 3px #00ff41
-  }
+  body{background:#000;background-image:radial-gradient(ellipse at 30% 20%,#001a00 0%,#000 100%);min-height:100vh;padding:1.5rem;font-family:'Courier New',monospace;display:flex;justify-content:center;align-items:center}
+  .cyber-window{max-width:1200px;width:100%;background:#0a0f0a;border:3px solid #00ff41;border-radius:28px;box-shadow:0 0 20px rgba(0,255,65,.3);overflow:hidden;padding:1.5rem}
+  .cyber-grid{display:flex;flex-wrap:wrap;gap:2rem;justify-content:center;align-items:flex-start}
+  .atari-console{flex:1.2;min-width:320px;background:#0a0f0a;border:2px solid #00ff41;border-radius:24px;padding:1.2rem;box-shadow:0 0 15px rgba(0,255,65,.2)}
+  .wood-panel{background:#0a1a0a;border-bottom:2px solid #00ff41;border-radius:16px 16px 0 0;padding:8px 12px;margin:-1.2rem -1.2rem 1rem -1.2rem;text-align:center;font-family:monospace;font-size:.8rem;font-weight:bold;letter-spacing:3px;color:#00ff41;text-shadow:0 0 3px #00ff41}
   .wood-panel .console-title{display:block;margin-bottom:4px}
-  .wood-panel .edition-link{
-    display:block;
-    color:#00ff41;
-    text-decoration:none;
-    transition:text-shadow .2s
-  }
-  .wood-panel .edition-link:hover{
-    text-shadow:0 0 8px #00ff41;
-    text-decoration:underline
-  }
-  .screen-bezel{
-    background:#010701;
-    border:1px solid #2a6e2a;
-    border-radius:16px;
-    padding:12px;
-    margin-bottom:1rem;
-    box-shadow:inset 0 0 10px rgba(0,0,0,.8), 0 0 0 2px #00ff4122;
-    position:relative
-  }
-  #gameCanvas{
-    background:#000;
-    width:100%;
-    height:auto;
-    aspect-ratio:336/240;
-    display:block;
-    border-radius:8px;
-    image-rendering:crisp-edges;
-    image-rendering:pixelated
-  }
-  .idle{
-    position:absolute;
-    inset:0;
-    background:#0a1a0a;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:12px;
-    pointer-events:none;
-    transition:opacity .4s;
-    border-radius:8px;
-    z-index:5
-  }
+  .wood-panel .edition-link{display:block;color:#00ff41;text-decoration:none;transition:text-shadow .2s}
+  .wood-panel .edition-link:hover{text-shadow:0 0 8px #00ff41;text-decoration:underline}
+  .screen-bezel{background:#010701;border:1px solid #2a6e2a;border-radius:16px;padding:12px;margin-bottom:1rem;box-shadow:inset 0 0 10px rgba(0,0,0,.8),0 0 0 2px #00ff4122;position:relative}
+  #gameCanvas{background:#000;width:100%;height:auto;aspect-ratio:336/240;display:block;border-radius:8px;image-rendering:crisp-edges;image-rendering:pixelated}
+  .idle{position:absolute;inset:0;background:#0a1a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;pointer-events:none;transition:opacity .4s;border-radius:8px;z-index:5}
   .idle.hidden{opacity:0}
-  .idle-txt{
-    font-family:'Press Start 2P', monospace;
-    font-size:9px;
-    color:#00ff41;
-    text-align:center;
-    line-height:1.8;
-    text-shadow:0 0 3px #00ff41
-  }
-  .controls{
-    display:flex;
-    flex-direction:column;
-    gap:1rem;
-    margin-top:.5rem
-  }
-  .joystick-area{
-    display:flex;
-    justify-content:center;
-    gap:2rem;
-    align-items:center;
-    flex-wrap:wrap
-  }
-  .joystick{
-    position:relative;
-    width:110px;
-    height:110px;
-    background:#0a0f0a;
-    border:2px solid #00ff41;
-    border-radius:50%;
-    box-shadow:0 0 10px rgba(0,255,65,.3)
-  }
-  .joystick-stick{
-    position:absolute;
-    width:50px;
-    height:50px;
-    background:#00ff41;
-    border-radius:50%;
-    top:50%;
-    left:50%;
-    transform:translate(-50%,-50%);
-    box-shadow:0 0 8px #00ff41
-  }
-  .dir-btn{
-    position:absolute;
-    background:transparent;
-    border:none;
-    cursor:pointer;
-    width:36px;
-    height:36px;
-    z-index:5
-  }
+  .idle-txt{font-family:'Press Start 2P',monospace;font-size:9px;color:#00ff41;text-align:center;line-height:1.8;text-shadow:0 0 3px #00ff41}
+  .controls{display:flex;flex-direction:column;gap:1rem;margin-top:.5rem}
+  .joystick-area{display:flex;justify-content:center;gap:2rem;align-items:center;flex-wrap:wrap}
+  .joystick{position:relative;width:110px;height:110px;background:#0a0f0a;border:2px solid #00ff41;border-radius:50%;box-shadow:0 0 10px rgba(0,255,65,.3)}
+  .joystick-stick{position:absolute;width:50px;height:50px;background:#00ff41;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px #00ff41}
+  .dir-btn{position:absolute;background:transparent;border:none;cursor:pointer;width:36px;height:36px;z-index:5}
   #up{top:0;left:50%;transform:translateX(-50%)}
   #down{bottom:0;left:50%;transform:translateX(-50%)}
   #left{left:0;top:50%;transform:translateY(-50%)}
   #right{right:0;top:50%;transform:translateY(-50%)}
   .fire-buttons{display:flex;gap:1.5rem}
-  .fire{
-    width:65px;
-    height:65px;
-    border-radius:50%;
-    background:radial-gradient(circle at 30% 30%, #00ff41, #006600);
-    border:2px solid #00ff41;
-    box-shadow:0 4px 0 #003300, 0 6px 12px rgba(0,0,0,.5);
-    cursor:pointer;
-    font-family:monospace;
-    font-weight:bold;
-    color:#000;
-    font-size:.9rem;
-    transition:transform .05s, box-shadow .05s
-  }
+  .fire{width:65px;height:65px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#00ff41,#006600);border:2px solid #00ff41;box-shadow:0 4px 0 #003300,0 6px 12px rgba(0,0,0,.5);cursor:pointer;font-family:monospace;font-weight:bold;color:#000;font-size:.9rem;transition:transform .05s,box-shadow .05s}
   .fire:active,.fire.pr{transform:translateY(4px);box-shadow:0 1px 0 #003300,0 4px 8px black}
   .select-reset{display:flex;justify-content:center;gap:2rem;margin-top:.5rem}
-  .sys-btn{
-    background:#0a0f0a;
-    border:1px solid #00ff41;
-    border-radius:40px;
-    padding:6px 18px;
-    color:#00ff41;
-    font-family:monospace;
-    font-size:.7rem;
-    cursor:pointer;
-    box-shadow:0 2px 5px rgba(0,0,0,.3);
-    transition:.05s linear
-  }
+  .sys-btn{background:#0a0f0a;border:1px solid #00ff41;border-radius:40px;padding:6px 18px;color:#00ff41;font-family:monospace;font-size:.7rem;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,.3);transition:.05s linear}
   .sys-btn:active,.sys-btn.pr{background:#00ff41;color:#000;box-shadow:0 0 10px #00ff41}
-  .panel{
-    flex:1;
-    min-width:280px;
-    display:flex;
-    flex-direction:column;
-    gap:1rem
-  }
-  .pbox{
-    background:#051005;
-    border:1px solid #2a6e2a;
-    border-radius:16px;
-    overflow:hidden
-  }
-  .phead{
-    padding:10px 14px;
-    background:#030903;
-    border-bottom:1px solid #00ff41;
-    font-family:monospace;
-    font-weight:bold;
-    font-size:.75rem;
-    color:#00ff41;
-    letter-spacing:1px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center
-  }
-  .reset-btn{
-    background:transparent;
-    border:1px solid #2a6e2a;
-    border-radius:20px;
-    padding:3px 10px;
-    color:#88ff88;
-    font-family:monospace;
-    font-size:.65rem;
-    cursor:pointer
-  }
+  .panel{flex:1;min-width:280px;display:flex;flex-direction:column;gap:1rem}
+  .pbox{background:#051005;border:1px solid #2a6e2a;border-radius:16px;overflow:hidden}
+  .phead{padding:10px 14px;background:#030903;border-bottom:1px solid #00ff41;font-family:monospace;font-weight:bold;font-size:.75rem;color:#00ff41;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center}
+  .reset-btn{background:transparent;border:1px solid #2a6e2a;border-radius:20px;padding:3px 10px;color:#88ff88;font-family:monospace;font-size:.65rem;cursor:pointer}
   .reset-btn:hover{border-color:#00ff41;color:#00ff41}
   .search-box{padding:8px 12px;border-bottom:1px solid #2a6e2a}
-  .search-box input{
-    width:100%;
-    background:#010701;
-    border:1px solid #2a6e2a;
-    border-radius:60px;
-    padding:6px 12px;
-    color:#00ff41;
-    font-family:monospace;
-    font-size:.7rem;
-    outline:none
-  }
+  .search-box input{width:100%;background:#010701;border:1px solid #2a6e2a;border-radius:60px;padding:6px 12px;color:#00ff41;font-family:monospace;font-size:.7rem;outline:none}
   .search-box input:focus{border-color:#00ff41}
-  .rlist{
-    max-height:240px;
-    overflow-y:auto;
-    padding:6px;
-    display:flex;
-    flex-direction:column;
-    gap:4px
-  }
+  .rlist{max-height:240px;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:4px}
   .rlist::-webkit-scrollbar{width:4px}
   .rlist::-webkit-scrollbar-thumb{background:#2a6e2a;border-radius:4px}
-  .ritem{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    padding:8px 10px;
-    border-radius:12px;
-    cursor:pointer;
-    border:1px solid transparent;
-    transition:.1s;
-    background:#010701
-  }
+  .ritem{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;cursor:pointer;border:1px solid transparent;transition:.1s;background:#010701}
   .ritem:hover{border-color:#2a6e2a;background:#0a1a0a}
   .ritem.active{border-color:#00ff41;background:#0a2a0a}
-  .badge{
-    font-size:.6rem;
-    padding:2px 6px;
-    border-radius:30px;
-    background:#0a2a0a;
-    border:1px solid #2a6e2a;
-    color:#88ff88
-  }
-  .rname{
-    flex:1;
-    font-size:.7rem;
-    color:#bbffbb;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis
-  }
-  .play-count{
-    font-size:.6rem;
-    background:#0a1a0a;
-    border-radius:20px;
-    padding:0 6px;
-    color:#88ff88
-  }
-  .fav-star{
-    font-size:1rem;
-    cursor:pointer;
-    color:#555;
-    transition:.1s
-  }
+  .badge{font-size:.6rem;padding:2px 6px;border-radius:30px;background:#0a2a0a;border:1px solid #2a6e2a;color:#88ff88}
+  .rname{flex:1;font-size:.7rem;color:#bbffbb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .play-count{font-size:.6rem;background:#0a1a0a;border-radius:20px;padding:0 6px;color:#88ff88}
+  .fav-star{font-size:1rem;cursor:pointer;color:#555;transition:.1s}
   .fav-star.favorited{color:#ffcc00;text-shadow:0 0 3px #ffcc00}
-  .sbar{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    padding:6px 12px;
-    border-top:1px solid #2a6e2a;
-    font-size:.65rem;
-    color:#88ff88
-  }
+  .sbar{display:flex;align-items:center;gap:8px;padding:6px 12px;border-top:1px solid #2a6e2a;font-size:.65rem;color:#88ff88}
   .sdot{width:8px;height:8px;border-radius:50%;background:#333}
   .sdot.on{background:#00ff41;box-shadow:0 0 5px #00ff41}
   .load-local-area{padding:12px;display:flex;flex-direction:column;gap:10px}
-  .btn-local{
-    background:#0a1a0a;
-    border:1px solid #2a6e2a;
-    border-radius:40px;
-    padding:8px;
-    color:#00ff41;
-    font-family:monospace;
-    font-size:.7rem;
-    cursor:pointer;
-    text-align:center
-  }
+  .btn-local{background:#0a1a0a;border:1px solid #2a6e2a;border-radius:40px;padding:8px;color:#00ff41;font-family:monospace;font-size:.7rem;cursor:pointer;text-align:center}
   .btn-local:hover{border-color:#00ff41;background:#0a2a0a}
-  .dropz{
-    border:1px dashed #2a6e2a;
-    border-radius:16px;
-    padding:8px;
-    text-align:center;
-    font-size:.65rem;
-    color:#88ff88;
-    position:relative;
-    cursor:pointer
-  }
+  .dropz{border:1px dashed #2a6e2a;border-radius:16px;padding:8px;text-align:center;font-size:.65rem;color:#88ff88;position:relative;cursor:pointer}
   .dropz input{position:absolute;inset:0;opacity:0;cursor:pointer}
   .ctrlg{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px}
   .crow{display:flex;align-items:center;gap:8px}
-  kbd{
-    background:#010701;
-    border:1px solid #2a6e2a;
-    border-radius:4px;
-    padding:2px 6px;
-    font-family:monospace;
-    font-size:.65rem;
-    color:#00ff41
-  }
+  kbd{background:#010701;border:1px solid #2a6e2a;border-radius:4px;padding:2px 6px;font-family:monospace;font-size:.65rem;color:#00ff41}
   .clbl{color:#bbffbb;font-size:.65rem}
   .footer-link{text-align:center;margin-top:8px;font-size:.7rem}
   .footer-link a{color:#88ff88;text-decoration:none}
   .footer-link a:hover{color:#00ff41}
-  @media (max-width:780px){
-    .cyber-grid{flex-direction:column;align-items:center}
-    .atari-console{min-width:auto;width:100%}
-    .panel{width:100%}
-    .joystick{width:90px;height:90px}
-    .joystick-stick{width:40px;height:40px}
-    .fire{width:55px;height:55px;font-size:.7rem}
-  }
+  @media (max-width:780px){.cyber-grid{flex-direction:column;align-items:center}.atari-console{min-width:auto;width:100%}.panel{width:100%}.joystick{width:90px;height:90px}.joystick-stick{width:40px;height:40px}.fire{width:55px;height:55px;font-size:.7rem}}
 </style>
 </head>
 <body>
@@ -410,6 +133,9 @@
 </div>
 
 <script>
+  // ==================================================
+  //  CONFIGURACIÓN - OBTENER ROMS DESDE GITHUB Y CARGAR EMULADOR
+  // ==================================================
   (function(){
     let emulatorReady = false;
     let pendingLaunch = null;
@@ -481,7 +207,7 @@
 
     function cleanEmulator(){
       if(currentEmulator){
-        currentEmulator.destroy();
+        try{ currentEmulator.destroy(); }catch(e){}
         currentEmulator = null;
       }
       idleDiv.classList.remove('hidden');
@@ -502,9 +228,8 @@
         const response = await fetch(rom.url);
         if(!response.ok) throw new Error(`HTTP ${response.status}`);
         const romData = await response.arrayBuffer();
-        // Verificar que Javatari es un constructor
         if(typeof Javatari !== 'function'){
-          throw new Error('Javatari no es un constructor. Archivo incorrecto.');
+          throw new Error('Javatari no es un constructor. Verifica el script.');
         }
         currentEmulator = new Javatari(canvas);
         currentEmulator.loadCartridge(romData);
@@ -603,63 +328,41 @@
       }
     }
 
-    // Función para cargar Javatari desde el archivo local o fallback a CDN
-    function loadJavatariWithFallback(){
+    // Cargar Javatari desde una URL fiable (CDN de jsdelivr apuntando al embedded correcto)
+    function loadJavatariFromCDN(){
       return new Promise((resolve, reject) => {
-        // Primero intentamos cargar el archivo local
-        const localScript = document.createElement('script');
-        localScript.src = 'js/javatari.js';
-        localScript.onload = () => {
-          // Esperamos un poco para que la variable global se defina
+        const script = document.createElement('script');
+        // Esta es la URL directa del archivo embedded en el repositorio oficial
+        script.src = 'https://cdn.jsdelivr.net/gh/ppeccin/javatari.js@master/release/stable/5.0/embedded/javatari.js';
+        script.onload = () => {
+          // Esperar un momento a que se defina la variable global
           setTimeout(() => {
             if(typeof Javatari !== 'undefined' && typeof Javatari === 'function'){
               resolve();
             } else {
-              // Si no es función, probamos con CDN
-              loadFromCDN(resolve, reject);
+              reject(new Error('Javatari no se definió correctamente'));
             }
-          }, 100);
+          }, 200);
         };
-        localScript.onerror = () => {
-          console.warn('No se pudo cargar el archivo local. Intentando CDN...');
-          loadFromCDN(resolve, reject);
-        };
-        document.head.appendChild(localScript);
+        script.onerror = () => reject(new Error('Error al cargar el script desde CDN'));
+        document.head.appendChild(script);
       });
-    }
-
-    function loadFromCDN(resolve, reject){
-      const cdnScript = document.createElement('script');
-      cdnScript.src = 'https://cdn.jsdelivr.net/npm/javatari@5.2.3/dist/javatari.min.js';
-      cdnScript.onload = () => {
-        setTimeout(() => {
-          if(typeof Javatari !== 'undefined' && typeof Javatari === 'function'){
-            resolve();
-          } else {
-            reject(new Error('Javatari no se cargó correctamente desde ningún origen.'));
-          }
-        }, 100);
-      };
-      cdnScript.onerror = () => reject(new Error('Error al cargar Javatari desde CDN.'));
-      document.head.appendChild(cdnScript);
     }
 
     async function init(){
       setStatus('Cargando emulador...', false);
       try{
-        await loadJavatariWithFallback();
+        await loadJavatariFromCDN();
         emulatorReady = true;
         setStatus('Emulador listo.', true);
       }catch(err){
         console.error(err);
-        setStatus('ERROR: No se pudo cargar el emulador. Intenta recargar.', false);
-        romListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#ff4444;">No se pudo cargar el emulador.<br>Verifica tu conexión o recarga la página.</div>';
-        // Cargar lista de juegos aunque falle el emulador
-        await fetchGamesFromGitHub();
-        return;
+        setStatus('ERROR: No se pudo cargar el emulador. Verifica tu conexión.', false);
+        romListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#ff4444;">No se pudo cargar el emulador.<br>Por favor, recarga la página o verifica tu conexión a Internet.</div>';
       }
+      // Cargar lista de juegos (siempre, aunque falle el emulador)
       await fetchGamesFromGitHub();
-      if(pendingLaunch !== null){
+      if(pendingLaunch !== null && emulatorReady){
         launchRom(pendingLaunch);
         pendingLaunch = null;
       }
