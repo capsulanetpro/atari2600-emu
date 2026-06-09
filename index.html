@@ -6,7 +6,7 @@
 <title>Capsulanet · Atari 2600 (Capsulanet Edition)</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
-  /* ========== ESTILOS CYBERPUNK (completos, no los repito por brevedad) ========== */
+  /* ========== ESTILOS CYBERPUNK ========== */
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:#000;background-image:radial-gradient(ellipse at 30% 20%,#001a00 0%,#000 100%);min-height:100vh;padding:1.5rem;font-family:'Courier New',monospace;display:flex;justify-content:center;align-items:center}
   .cyber-window{max-width:1200px;width:100%;background:#0a0f0a;border:3px solid #00ff41;border-radius:28px;box-shadow:0 0 20px rgba(0,255,65,.3);overflow:hidden;padding:1.5rem}
@@ -140,7 +140,6 @@
 </div>
 
 <script>
-  // Cargar el emulador desde archivo local (debe ser el correcto)
   (function(){
     let emulatorReady = false;
     let pendingLaunch = null;
@@ -234,7 +233,7 @@
         if(!response.ok) throw new Error(`HTTP ${response.status}`);
         const romData = await response.arrayBuffer();
         if(typeof Javatari !== 'function'){
-          throw new Error('Javatari no es un constructor. El archivo js/javatari.js es incorrecto.');
+          throw new Error('Javatari no es un constructor. Verifica el script.');
         }
         currentEmulator = new Javatari(canvas);
         currentEmulator.loadCartridge(romData);
@@ -333,9 +332,9 @@
       }
     }
 
-    // Cargar el emulador desde el archivo local
+    // Cargar Javatari desde la URL del CDN oficial (rama master)
     const script = document.createElement('script');
-    script.src = 'js/javatari.js';
+    script.src = 'https://cdn.jsdelivr.net/gh/ppeccin/javatari.js@master/release/stable/5.0/embedded/javatari.js';
     script.onload = () => {
       setTimeout(() => {
         if(typeof Javatari !== 'undefined' && typeof Javatari === 'function'){
@@ -348,15 +347,15 @@
             }
           });
         } else {
-          setStatus('ERROR: El archivo js/javatari.js no es válido.', false);
-          romListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#ff4444;">El archivo del emulador es incorrecto.<br>Descarga el archivo correcto desde el repositorio oficial.</div>';
+          setStatus('ERROR: Javatari no se cargó correctamente.', false);
+          romListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#ff4444;">No se pudo cargar el emulador.<br>Intenta recargar la página.</div>';
           fetchGamesFromGitHub();
         }
-      }, 200);
+      }, 300);
     };
     script.onerror = () => {
-      setStatus('ERROR: No se pudo cargar js/javatari.js', false);
-      romListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#ff4444;">No se encuentra el archivo del emulador.<br>Asegúrate de que existe en /js/javatari.js</div>';
+      setStatus('ERROR: No se pudo cargar el emulador desde el CDN.', false);
+      romListEl.innerHTML = '<div style="padding:20px;text-align:center;color:#ff4444;">Error de conexión al cargar el emulador.<br>Recarga o prueba más tarde.</div>';
       fetchGamesFromGitHub();
     };
     document.head.appendChild(script);
